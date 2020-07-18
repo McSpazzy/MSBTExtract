@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,6 +12,8 @@ namespace MSBTTools
         public Header HeaderData;
         public TXT TXTData;
         public LBL1 LBLData;
+
+        public KeyValuePair<string, string>[] Sorted;
 
         public struct Header
         {
@@ -189,7 +193,17 @@ namespace MSBTTools
 
             var text = new TXT(bytes, txtOffset);
 
-            return new MSBT(){HeaderData = header, LBLData = labels, TXTData = text};
+            var msbt = new MSBT() {HeaderData = header, LBLData = labels, TXTData = text};
+            var sort = new Dictionary<string, string>();
+
+            for (var i = 0; i < labels.Labels.Length; i++)
+            {
+                sort.Add(labels.Labels[i].Name, text.Texts[i].Value);
+            }
+
+            msbt.Sorted = sort.OrderBy(k => k.Key).ToArray();
+
+            return msbt;
         }
     }
 }
