@@ -49,6 +49,7 @@ namespace MSBTTools
             {
                 var dataArray = new byte[(int) (nodes[i][1] - nodes[i][0])];
                 Array.Copy(bytes, (int) (nodes[i][0] + dataOffset), dataArray, 0, (int) (nodes[i][1] - nodes[i][0]));
+                // Console.WriteLine(fileNames[i]);
                 dicOut.Add(fileNames[i], MSBT.Open(dataArray));
             }
 
