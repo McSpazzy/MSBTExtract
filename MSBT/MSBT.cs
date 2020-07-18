@@ -1,18 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MSBTTools
 {
-    public class MSBT
+    public struct MSBT
     {
         public Header HeaderData;
         public TXT TXTData;
         public LBL1 LBLData;
 
-        public class Header
+        public struct Header
         {
             public Header(byte[] data)
             {
@@ -24,12 +23,14 @@ namespace MSBTTools
             }
         }
 
-        public class LBL1
+        public struct LBL1
         {
-            public List<Label> Labels;
+            public Label[] Labels;
+            public Group[] Groups;
+
             public uint Length;
 
-            public class Group
+            public struct Group
             {
                 public int Labels;
                 public uint Offset;
@@ -41,7 +42,7 @@ namespace MSBTTools
                 }
             }
 
-            public class Label
+            public struct Label
             {
                 public string Name;
                 public uint Index;
@@ -66,34 +67,42 @@ namespace MSBTTools
                 {
                     throw new InvalidDataException("Missing LBL1");
                 }
-
-                Labels = new List<Label>();
+                
                 Length = BitConverter.ToUInt32(data, 32 + 4);
 
-                for (var i = 0; i < BitConverter.ToUInt32(data, 32 + 16); i++)
-                {
-                    var g = new Group(BitConverter.ToInt32(data, 32 + 20 + i * 8), BitConverter.ToUInt32(data, 32 + 24 + i * 8));
+                Groups = new Group[BitConverter.ToUInt32(data, 32 + 16)];
+                var labelCount = 0;
 
+                for (var i = 0; i < Groups.Length; i++)
+                {
+                    Groups[i] = new Group(BitConverter.ToInt32(data, 32 + 20 + i * 8), BitConverter.ToUInt32(data, 32 + 24 + i * 8));
+                    labelCount += Groups[i].Labels;
+                }
+
+                Labels = new Label[labelCount];
+
+                for (var i = 0; i < Groups.Length; i++)
+                {
                     var nameOffset = 0;
-                    for (var j = 0; j < g.Labels; j++)
+                    for (var j = 0; j < Groups[i].Labels; j++)
                     {
-                        var labelOffset = 32 + 16 + g.Offset + nameOffset + 1 + j * 5;
+                        var labelOffset = 32 + 16 + Groups[i].Offset + nameOffset + 1 + j * 5;
                         var length = data[labelOffset - 1];
                         var name = Encoding.UTF8.GetString(data, (int)labelOffset, length);
                         var index = BitConverter.ToUInt32(data, (int)(labelOffset + length));
                         nameOffset += length;
-                        Labels.Add(new Label(name, index, i));
+                        Labels[index] = new Label(name, index, i);
                     }
                 }
             }
         }
 
-        public class TXT
+        public struct TXT
         {
             public uint Length;
-            public List<Text> Texts;
+            public Text[] Texts;
 
-            public class Text
+            public struct Text
             {
                 public byte[] Data;
                 public string Value;
@@ -117,10 +126,10 @@ namespace MSBTTools
                     throw new InvalidDataException("Missing TXT");
                 }
 
-                Texts = new List<Text>();
                 Length = BitConverter.ToUInt32(data, offset + 4);
 
                 var count = BitConverter.ToUInt32(data, offset + 16);
+                Texts = new Text[count];
 
                 for (var i = 0; i < count; i++)
                 {
@@ -139,7 +148,7 @@ namespace MSBTTools
 
                     Array.Copy(data, start, ssd, 0, length);
 
-                    Texts.Add(new Text(ssd));
+                    Texts[i] = new Text(ssd);
                 }
             }
         }
@@ -153,6 +162,11 @@ namespace MSBTTools
 
             var bytes = await File.ReadAllBytesAsync(filename);
 
+            return Open(bytes);
+        }
+
+        public static MSBT Open(byte[] bytes)
+        {
             var header = new Header(bytes);
             var labels = new LBL1(bytes);
 
