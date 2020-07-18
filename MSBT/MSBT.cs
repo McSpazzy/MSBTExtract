@@ -171,11 +171,19 @@ namespace MSBTTools
             var labels = new LBL1(bytes);
 
             var lblPad = 16 - labels.Length % 16;
+            if (lblPad == 16)
+            {
+                lblPad = 0;
+            }
 
             var atrOffset = (int)(labels.Length + 32 + 16 + lblPad);
 
             var atrLength = BitConverter.ToUInt32(bytes, atrOffset + 4);
             var artPad = 16 - atrLength % 16;
+            if (artPad == 16)
+            {
+                artPad = 0;
+            }
 
             var txtOffset = (int)(atrOffset + atrLength + 16 + artPad);
 
